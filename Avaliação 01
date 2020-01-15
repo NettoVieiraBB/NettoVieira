@@ -1,0 +1,41 @@
+import scrapy
+
+
+class MecardolivrecapturaSpider(scrapy.Spider):
+
+    name = 'Mercadolivrecaptura'
+    start_urls = {'https://lista.mercadolivre.com.br/patins'}
+    
+    def parse(self, response):
+        produtos = response.xpath('.//ol[contains(@class,"section") and contains(@class,"search-results")]/li')
+
+        for produto in produtos:
+
+            link_detail = produto.xpath('.//a[contains(@class,"item__js-link")]/@href').extract_first()
+       
+            yield scrapy.Request(
+                url=link_detail,
+                callback=self.parse_detail
+            )
+
+        next_page = response.xpath(
+            './/a[contains(@class,"prefetch")]/@href')
+
+    def parse_detail(self, response):
+
+        descricao = (response.xpath(
+            './/h1[contains(@class,"item-title__primary")]/text()').extract_first()).strip()
+
+        preco_fracao = response.xpath(
+            './/span[@class="price-tag-fraction"]/text()').extract_first()
+
+        preco_decimal = response.xpath(
+            './/span[@class="price-tag-cents"]/text()').extract_first()
+
+        preco = float(preco_fracao + '.' +
+                      ('00' if preco_decimal == None else preco_decimal))
+        
+        yield {
+            'Item': descricao,
+            'Valor(R$)': preco,
+        }
